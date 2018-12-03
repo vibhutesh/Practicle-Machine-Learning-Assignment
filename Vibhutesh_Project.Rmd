@@ -1,0 +1,99 @@
+---
+title: 'Practical Machine Learning : Project'
+author: "Vibhutesh Kumar Singh"
+date: "December 3, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Prediction Assignment Writeup (Taken From Course Page) 
+# Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+**Data**
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+# R Code and Subsequent Results
+
+```{r cars}
+# Assuming the user have already these package installed, otherwise please install before executing the code.
+library(caret) # Loading Caret Package
+library(randomForest) # Loading Random forest Class
+library(rpart) # Loading Regressive Partitioning & trees Class
+library(rpart.plot) # Loading trees plot Class
+
+set.seed(333) # Setting Random Number Generator to random seed to ensure repeatibility
+```
+On manually inspecting the Training Data I can see **various cells are empty** and some has **#DIV/0!** as values. So will just replace those cells by NA (it seems to be a standard procedure as letting every obscure values as NA enables us to manipulate the data with more flexibility.)
+
+```{r}
+# Loading training data into memory
+trainingset <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+dim(trainingset) # Checking Dimension of Training Set
+
+# Loading testing data into memory
+testingset <- read.csv('pml-testing.csv', na.strings=c("NA","#DIV/0!", ""))
+dim(testingset) # Checking Dimension of Testing Set
+
+# Deleting columns of all or most missing values
+trainingset<-trainingset[,colSums(is.na(trainingset)) == 0]
+testingset <-testingset[,colSums(is.na(testingset)) == 0]
+
+# After deleting columns of NAs we can still see that some columns could not be effectively stting the workout data, i.e., the 1st seven variables 
+trainingset   <-trainingset[,-c(1:7)]
+testingset <-testingset[,-c(1:7)]
+
+# Ultimately the dimension of training and testing data
+dim(trainingset)
+dim(testingset)
+
+# Brief summaries of the final training and testing data
+head(trainingset)
+head(testingset)
+
+# Now paritioning the training set into 2 parts, one with 70% of the data for training and other with 30% of the total rows for testing the hypothesis, with respect to "classe" column.
+partition <- createDataPartition(y=trainingset$classe, p=0.70, list=FALSE)
+
+# Dividing the partitioned variables into training and test set
+Train <- trainingset[partition, ] 
+Test <- trainingset[-partition, ]
+
+# dimensions of Train and Test set
+dim(Train)
+dim(Test)
+
+plot(Train$classe, col="red", main="Histogram representing number of occurances per classe value", xlab="classe levels", ylab="Occurrences")
+
+# Training the classifier to classify "classe" variable using all other available variables, utilizing randomForest method 
+trainingModel <- randomForest(classe ~. , data=Train, method="class")
+
+# Now appliying the trained classifier in the test data
+testModel <- predict(trainingModel, Test, type = "class")
+
+# Getting various test stats 
+confusionMatrix(testModel, Test$classe)
+
+# Now at last applying the trained classifier on the testing set to get the corresponding "classe" category
+testingsetApply <- predict(trainingModel, testingset, type="class")
+testingsetApply
+
+
+```
+# Summary
+The random forest method yield an accuracy of 0.9963, i.e., 99.63% on the test data. The variable **testingsetApply** contains the **classe** account of all data rows in **testingset**. 
+
+# References
+[1] Velloso, E., Bulling, A., Gellersen, H., Ugulino, W., Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises.
